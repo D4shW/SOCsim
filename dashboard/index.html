@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOC | Threat Analytics</title>
+    <title>SOC | Advanced Threat Analytics</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;700&display=swap"
         rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -17,10 +18,10 @@
                 <span class="shield">🛡️</span> SOC_SIM
             </div>
             <nav>
-                <ul>
-                    <li class="active">📊 Vue d'ensemble</li>
-                    <li>🚨 Alertes (Critical)</li>
-                    <li>📜 Historique</li>
+                <ul id="nav-menu">
+                    <li class="active" onclick="switchView('overview', this)">📊 Vue d'ensemble</li>
+                    <li onclick="switchView('alerts', this)">🚨 Alertes (Critical)</li>
+                    <li onclick="switchView('history', this)">📜 Historique complet</li>
                 </ul>
             </nav>
             <div class="score-card">
@@ -31,49 +32,97 @@
 
         <main class="main-content">
             <header>
-                <h1>Global Threat Dashboard</h1>
-                <div class="status-badge pulse-green">Système en ligne</div>
+                <h1 id="page-title">Global Threat Dashboard</h1>
+                <div class="status-badge pulse-green">Sensors Online</div>
             </header>
 
-            <section class="stats-grid">
-                <div class="stat-box">
-                    <span class="stat-title">Événements (Total)</span>
-                    <span class="stat-number" id="total-logs">0</span>
-                </div>
-                <div class="stat-box warning">
-                    <span class="stat-title">Avertissements</span>
-                    <span class="stat-number" id="total-warnings">0</span>
-                </div>
-                <div class="stat-box critical">
-                    <span class="stat-title">Alertes Critiques</span>
-                    <span class="stat-number" id="total-criticals">0</span>
-                </div>
-                <div class="stat-box success">
-                    <span class="stat-title">IPs Bloquées</span>
-                    <span class="stat-number" id="total-blocked">0</span>
-                </div>
-            </section>
+            <div id="view-overview" class="view active-view">
+                <section class="stats-grid">
+                    <div class="stat-box"><span class="stat-title">Événements (Total)</span><span class="stat-number"
+                            id="total-logs">0</span></div>
+                    <div class="stat-box warning"><span class="stat-title">Avertissements</span><span
+                            class="stat-number" id="total-warnings">0</span></div>
+                    <div class="stat-box critical"><span class="stat-title">Alertes Critiques</span><span
+                            class="stat-number" id="total-criticals">0</span></div>
+                    <div class="stat-box success"><span class="stat-title">IPs Bloquées</span><span class="stat-number"
+                            id="total-blocked">0</span></div>
+                </section>
 
-            <section class="ops-grid">
-                <div class="panel control-panel">
-                    <h2>🎯 Simulateur d'Attaques</h2>
-                    <p>Déclenchez des menaces sur le réseau.</p>
-                    <button class="btn btn-attack" onclick="triggerAttack('brute')">⚙️ Lancer Brute Force SSH</button>
-                    <button class="btn btn-attack" onclick="triggerAttack('scan')">📡 Lancer Scan de Ports</button>
-                    <button class="btn btn-report" onclick="alert('Fonctionnalité rapport en cours de création')">📄
-                        Générer Rapport</button>
-                </div>
-
-                <div class="panel terminal-panel">
-                    <h2>📟 Live Event Logs</h2>
-                    <div class="terminal" id="terminal">
-                        <div class="log log-info">System initialized. Awaiting events...</div>
+                <section class="charts-grid">
+                    <div class="panel chart-panel">
+                        <h2>📈 Volume d'événements (Live)</h2>
+                        <canvas id="lineChart"></canvas>
                     </div>
+                    <div class="panel chart-panel">
+                        <h2>🍩 Répartition des Niveaux</h2>
+                        <div class="doughnut-container">
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ops-grid">
+                    <div class="panel control-panel">
+                        <h2>🎯 Lancement de Scénarios</h2>
+                        <div class="btn-grid">
+                            <button class="btn btn-attack" onclick="triggerAttack('brute')">🔑 Brute Force SSH</button>
+                            <button class="btn btn-attack" onclick="triggerAttack('scan')">📡 Scan de Ports</button>
+                            <button class="btn btn-attack" onclick="triggerAttack('sqli')">💉 Injection SQL</button>
+                            <button class="btn btn-attack" onclick="triggerAttack('ddos')">🌊 Attaque DDoS</button>
+                            <button class="btn btn-attack" onclick="triggerAttack('malware')">🦠 Malware / EDR</button>
+                        </div>
+                    </div>
+
+                    <div class="panel terminal-panel">
+                        <h2>📟 Live Event Logs</h2>
+                        <div class="terminal" id="terminal">
+                            <div class="log log-info">System initialized. Awaiting events...</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="view-alerts" class="view">
+                <div class="panel">
+                    <h2>Tableau de bord de remédiation</h2>
+                    <p>Seules les alertes nécessitant une action de l'analyste sont affichées ici.</p>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Heure</th>
+                                <th>Niveau</th>
+                                <th>Adresse Source</th>
+                                <th>Description de l'alerte</th>
+                                <th>Action SOC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-table-body">
+                        </tbody>
+                    </table>
                 </div>
-            </section>
+            </div>
+
+            <div id="view-history" class="view">
+                <div class="panel">
+                    <h2>Base de données d'événements</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Heure</th>
+                                <th>Niveau</th>
+                                <th>IP Source</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </main>
     </div>
-
     <script src="script.js"></script>
 </body>
 
