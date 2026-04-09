@@ -22,6 +22,24 @@ body {
     color: var(--text-main);
     height: 100vh;
     overflow: hidden;
+    transition: background-color 0.5s;
+}
+
+/* Animation quand le serveur est compromis */
+.compromised-flash {
+    animation: flashRed 1s infinite alternate;
+}
+
+@keyframes flashRed {
+    0% {
+        background-color: var(--bg-dark);
+    }
+
+    100% {
+        background-color: #450a0a;
+    }
+
+    /* Rouge très sombre */
 }
 
 .siem-layout {
@@ -29,7 +47,6 @@ body {
     height: 100vh;
 }
 
-/* Sidebar */
 .sidebar {
     width: 250px;
     background-color: var(--bg-panel);
@@ -37,6 +54,7 @@ body {
     padding: 20px;
     display: flex;
     flex-direction: column;
+    z-index: 10;
 }
 
 .logo {
@@ -87,7 +105,6 @@ nav li:hover {
     transition: color 0.3s;
 }
 
-/* Main Content & Views */
 .main-content {
     flex-grow: 1;
     padding: 30px;
@@ -95,6 +112,7 @@ nav li:hover {
     flex-direction: column;
     gap: 20px;
     overflow-y: auto;
+    z-index: 5;
 }
 
 header {
@@ -103,6 +121,36 @@ header {
     align-items: center;
     border-bottom: 1px solid #334155;
     padding-bottom: 15px;
+}
+
+.status-badge {
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--info);
+    border: 1px solid var(--info);
+}
+
+.status-badge.compromised {
+    background: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border-color: var(--critical);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .view {
@@ -115,7 +163,6 @@ header {
     display: flex;
 }
 
-/* Stats & Panels */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -190,7 +237,6 @@ header {
     justify-content: center;
 }
 
-/* Controls & Terminal */
 .ops-grid {
     display: grid;
     grid-template-columns: 1fr 2fr;
@@ -225,7 +271,51 @@ header {
     transform: translateY(-2px);
 }
 
-/* Terminal */
+/* NOUVEAU : Toolbar du terminal */
+.terminal-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    background: #0f172a;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #334155;
+}
+
+.terminal-toolbar input,
+.terminal-toolbar select {
+    background: #1e293b;
+    color: white;
+    border: 1px solid #475569;
+    padding: 5px 10px;
+    border-radius: 4px;
+    outline: none;
+}
+
+.terminal-toolbar input {
+    flex-grow: 1;
+}
+
+.tool-btn {
+    background: #334155;
+    color: white;
+    border: 1px solid #475569;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tool-btn:hover {
+    background: #475569;
+}
+
+.tool-btn.paused {
+    background: var(--warning);
+    color: black;
+    border-color: var(--warning);
+    font-weight: bold;
+}
+
 .terminal {
     background-color: #020617;
     flex-grow: 1;
@@ -234,7 +324,7 @@ header {
     font-family: 'Fira Code', monospace;
     font-size: 0.85rem;
     overflow-y: auto;
-    height: 300px;
+    height: 250px;
     border: 1px solid #1e293b;
 }
 
@@ -264,7 +354,6 @@ header {
     margin-right: 10px;
 }
 
-/* Interactive IP */
 .ip-link {
     font-family: 'Fira Code', monospace;
     color: var(--accent);
@@ -276,7 +365,6 @@ header {
     color: white;
 }
 
-/* Tables */
 .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -316,7 +404,6 @@ header {
     border: 1px solid var(--critical);
 }
 
-/* Buttons Action */
 .btn-block {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid var(--critical);
@@ -357,7 +444,6 @@ header {
     font-size: 0.8rem;
 }
 
-/* Missions */
 .mission-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -377,7 +463,6 @@ header {
     margin: 10px 0 20px 0;
 }
 
-/* Modal System */
 .hidden {
     display: none !important;
 }
@@ -428,7 +513,6 @@ header {
     cursor: pointer;
 }
 
-/* Timeline dans la Modal */
 .timeline {
     border-left: 2px solid var(--accent);
     margin-left: 10px;

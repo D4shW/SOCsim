@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOC | Advanced Threat Analytics V3</title>
+    <title>SOC | Advanced Threat Analytics V4</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;700&display=swap"
         rel="stylesheet">
@@ -32,7 +32,7 @@
         <main class="main-content">
             <header>
                 <h1 id="page-title">Global Threat Dashboard</h1>
-                <div class="status-badge pulse-green">Sensors Online</div>
+                <div class="status-badge pulse-green" id="global-status">✅ Sensors Online</div>
             </header>
 
             <div id="view-overview" class="view active-view">
@@ -72,8 +72,25 @@
                                 onclick="triggerAttack('false_positive')">🚨 Faux Positif (Employé)</button>
                         </div>
                     </div>
+
                     <div class="panel terminal-panel">
-                        <h2>📟 Live Event Logs (Cliquer sur une IP pour analyser)</h2>
+                        <h2>📟 Live Event Logs</h2>
+                        <div class="terminal-toolbar">
+                            <input type="text" id="search-logs" placeholder="🔍 Rechercher (IP, mot...)"
+                                onkeyup="filterLogs()">
+                            <select id="filter-level" onchange="filterLogs()">
+                                <option value="ALL">Tous les niveaux</option>
+                                <option value="INFO">INFO uniquement</option>
+                                <option value="WARNING">WARNING uniquement</option>
+                                <option value="CRITICAL">CRITICAL uniquement</option>
+                            </select>
+                            <button id="btn-pause" class="tool-btn" onclick="togglePause()">⏸️ Pause</button>
+                            <select id="sim-speed" onchange="changeSpeed()">
+                                <option value="1">Vitesse x1</option>
+                                <option value="2">Vitesse x2</option>
+                                <option value="5">Vitesse x5</option>
+                            </select>
+                        </div>
                         <div class="terminal" id="terminal">
                             <div class="log log-info">System initialized. Awaiting events...</div>
                         </div>
@@ -132,7 +149,7 @@
                         <div class="mission-card">
                             <h3>Mission 2 : Attaque Combinée (APT)</h3>
                             <p>Un attaquant lance un DDoS pour faire diversion pendant qu'il effectue un Brute Force.
-                                Restez concentré sur les alertes critiques.</p>
+                            </p>
                             <button class="btn btn-attack" onclick="startMission(2)">▶️ Démarrer Mission 2</button>
                         </div>
                     </div>
@@ -148,11 +165,9 @@
                 <h2 id="modal-title">Titre</h2>
                 <button class="close-btn" onclick="closeModal()">✖</button>
             </header>
-            <div id="modal-body" class="modal-body">
-            </div>
+            <div id="modal-body" class="modal-body"></div>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 

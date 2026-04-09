@@ -6,21 +6,30 @@ let lineChart, doughnutChart;
 let eventsTimeline = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 let currentSecondEvents = 0;
 
-// Base de connaissances pédagogique
+// NOUVEAU : Variables UX
+let currentFilter = 'ALL';
+let currentSearch = '';
+let isPaused = false;
+let simSpeed = 1;
+let isCompromised = false;
+
 const explanations = {
-    'brute': "<strong>Brute Force :</strong> L'attaquant essaie de deviner un mot de passe en testant des milliers de combinaisons à la seconde. <em>Indicateur :</em> Multiples échecs de connexion rapprochés.",
-    'scan': "<strong>Scan de Ports :</strong> L'attaquant 'toque' à toutes les portes (ports) du serveur pour voir lesquelles sont ouvertes et potentiellement vulnérables.",
-    'sqli': "<strong>Injection SQL :</strong> L'attaquant insère du code de base de données (ex: ' OR '1'='1) dans un formulaire web pour tromper le système et se connecter sans mot de passe.",
-    'ddos': "<strong>DDoS :</strong> Des milliers d'ordinateurs zombies envoient des requêtes en même temps pour saturer votre serveur et le faire planter.",
-    'fp': "<strong>Faux Positif :</strong> Une activité qui semble suspecte mais qui est légitime. Par exemple, un employé qui oublie son mot de passe 3 fois de suite."
+    'brute': "<strong>Brute Force :</strong> L'attaquant essaie de deviner un mot de passe en testant des milliers de combinaisons à la seconde.",
+    'scan': "<strong>Scan de Ports :</strong> L'attaquant 'toque' à toutes les portes du serveur pour voir lesquelles sont ouvertes.",
+    'sqli': "<strong>Injection SQL :</strong> L'attaquant insère du code de base de données dans un formulaire web pour tromper le système.",
+    'ddos': "<strong>DDoS :</strong> Des milliers d'ordinateurs envoient des requêtes en même temps pour saturer votre serveur.",
+    'fp': "<strong>Faux Positif :</strong> Une activité qui semble suspecte mais qui est légitime.",
+    'compromised': "🚨 <strong>SERVEUR COMPROMIS :</strong> Vous avez ignoré une attaque réelle. L'attaquant a exploité la vulnérabilité, installé une porte dérobée (backdoor) et pris le contrôle de la machine. C'est le Game Over pour l'entreprise."
 };
 
 // --- INITIALISATION ---
 document.addEventListener("DOMContentLoaded", () => {
     initCharts();
     setInterval(() => {
-        eventsTimeline.shift(); eventsTimeline.push(currentSecondEvents);
-        lineChart.update(); currentSecondEvents = 0;
+        if (!isPaused) {
+            eventsTimeline.shift(); eventsTimeline.push(currentSecondEvents);
+            lineChart.update(); currentSecondEvents = 0;
+        }
     }, 1000);
 });
 
@@ -31,6 +40,30 @@ function switchView(viewName, element) {
     document.getElementById('view-' + viewName).classList.add('active-view');
     const titles = { 'overview': 'Global Threat Dashboard', 'alerts': 'Incident Response & Alerts', 'history': 'Event Database', 'missions': 'Centre de Formation SOC' };
     document.getElementById('page-title').innerText = titles[viewName];
+}
+
+// --- NOUVEAU : UX (Filtres, Recherche, Pause, Vitesse) ---
+function filterLogs() {
+    currentSearch = document.getElementById('search-logs').value.toLowerCase();
+    currentFilter = document.getElementById('filter-level').value;
+    renderTerminal();
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    const btn = document.getElementById('btn-pause');
+    if (isPaused) {
+        btn.innerText = "▶️ Reprendre";
+        btn.classList.add('paused');
+    } else {
+        btn.innerText = "⏸️ Pause";
+        btn.classList.remove('paused');
+        renderTerminal(); // Affiche les logs arrivés pendant la pause
+    }
+}
+
+function changeSpeed() {
+    simSpeed = parseFloat(document.getElementById('sim-speed').value);
 }
 
 // --- GRAPHIQUES ---
@@ -49,7 +82,9 @@ function initCharts() {
 
 // --- LOGGING ENGINE ---
 function createLog(level, message, ip, type = 'general', isFalsePositive = false) {
-    stats.total++; currentSecondEvents++;
+    stats.total++;
+    if (!isPaused) currentSecondEvents++;
+
     if (level === "WARNING") stats.warnings++;
     if (level === "CRITICAL") stats.criticals++;
 
@@ -58,9 +93,48 @@ function createLog(level, message, ip, type = 'general', isFalsePositive = false
     allLogs.push(logEntry);
 
     updateOverviewDashboard();
-    addLogToTerminal(logEntry);
+
+    // NOUVEAU : Logique d'affichage Terminal optimisée avec filtres et pause
+    if (!isPaused) {
+        if ((currentFilter === 'ALL' || logEntry.level === currentFilter) &&
+            (!currentSearch || logEntry.message.toLowerCase().includes(currentSearch) || logEntry.ip.includes(currentSearch))) {
+            appendSingleLogToTerminal(logEntry);
+        }
+    }
+
     if (level === "CRITICAL") addLogToAlertsTable(logEntry);
     addLogToHistoryTable(logEntry);
+}
+
+function renderTerminal() {
+    const terminal = document.getElementById('terminal');
+    terminal.innerHTML = '';
+
+    // Garde seulement les 100 derniers pour éviter les lags navigateurs
+    const filteredLogs = allLogs.filter(log => {
+        if (currentFilter !== 'ALL' && log.level !== currentFilter) return false;
+        if (currentSearch && !log.message.toLowerCase().includes(currentSearch) && !log.ip.includes(currentSearch)) return false;
+        return true;
+    }).slice(-100);
+
+    filteredLogs.forEach(log => appendSingleLogToTerminal(log, false));
+    terminal.scrollTop = terminal.scrollHeight;
+}
+
+function appendSingleLogToTerminal(log, autoScroll = true) {
+    const terminal = document.getElementById('terminal');
+    const div = document.createElement('div');
+    div.className = `log log-${log.level.toLowerCase()}`;
+
+    let logHTML = `<span class="log-time">[${log.time}]</span> <strong>[${log.level}]</strong> IP: <span class="ip-link" onclick="analyzeIP('${log.ip}')">${log.ip}</span> - ${log.message}`;
+
+    if (log.level === "CRITICAL" && log.ip !== "SOC_ADMIN" && log.ip !== "SYSTEM") {
+        logHTML += `<br><button class="btn-block" style="margin-top:5px;" onclick="handleAlert('${log.ip}', ${log.isFP}, 'block', this)">Bloquer IP</button>
+                    <button class="btn-ignore" style="margin-top:5px; margin-left:5px;" onclick="handleAlert('${log.ip}', ${log.isFP}, 'ignore', this)">Ignorer (FP)</button>`;
+    }
+    div.innerHTML = logHTML;
+    terminal.appendChild(div);
+    if (autoScroll) terminal.scrollTop = terminal.scrollHeight;
 }
 
 function updateOverviewDashboard() {
@@ -73,24 +147,8 @@ function updateOverviewDashboard() {
     doughnutChart.update();
 }
 
-function addLogToTerminal(log) {
-    const terminal = document.getElementById('terminal');
-    const div = document.createElement('div');
-    div.className = `log log-${log.level.toLowerCase()}`;
-
-    // Ajout du lien cliquable sur l'IP
-    let logHTML = `<span class="log-time">[${log.time}]</span> <strong>[${log.level}]</strong> IP: <span class="ip-link" onclick="analyzeIP('${log.ip}')">${log.ip}</span> - ${log.message}`;
-
-    if (log.level === "CRITICAL" && log.ip !== "SOC_ADMIN") {
-        logHTML += `<br><button class="btn-block" style="margin-top:5px;" onclick="handleAlert('${log.ip}', ${log.isFP}, 'block', this)">Bloquer IP</button>
-                    <button class="btn-ignore" style="margin-top:5px; margin-left:5px;" onclick="handleAlert('${log.ip}', ${log.isFP}, 'ignore', this)">Ignorer (FP)</button>`;
-    }
-    div.innerHTML = logHTML;
-    terminal.appendChild(div);
-    terminal.scrollTop = terminal.scrollHeight;
-}
-
 function addLogToAlertsTable(log) {
+    if (log.ip === "SYSTEM") return; // Ne pas mettre les logs système dans les alertes
     const tbody = document.getElementById('alerts-table-body');
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -114,14 +172,16 @@ function addLogToHistoryTable(log) {
     tbody.insertBefore(tr, tbody.firstChild);
 }
 
-// --- GESTION DES DÉCISIONS (Vrai vs Faux Positifs) ---
+// --- NOUVEAU : CONSÉQUENCES ET ERREUR HUMAINE ---
 function handleAlert(ip, isFP, action, btnElement) {
+    if (isCompromised) return; // Si c'est game over, on ne peut plus jouer
+
     let parentCell = btnElement.parentElement;
 
     if (action === 'block') {
         if (isFP) {
-            stats.score -= 50; // AIE ! Bloqué un employé !
-            createLog("CRITICAL", `ERREUR SOC : Vous avez bloqué un employé légitime (${ip}). -50 Pts.`, "SOC_ADMIN");
+            stats.score -= 50;
+            createLog("CRITICAL", `ERREUR SOC : Vous avez bloqué le Directeur Financier (${ip}). Plainte RH en cours. -50 Pts.`, "SOC_ADMIN");
             document.getElementById('score').style.color = "var(--critical)";
         } else {
             stats.score += 50;
@@ -133,43 +193,61 @@ function handleAlert(ip, isFP, action, btnElement) {
     }
     else if (action === 'ignore') {
         if (isFP) {
-            stats.score += 50; // Bien vu !
-            createLog("INFO", `Succès SOC : Faux positif bien identifié pour ${ip}. +50 Pts.`, "SOC_ADMIN");
+            stats.score += 50;
+            createLog("INFO", `Succès SOC : Faux positif bien identifié pour ${ip}. Le Directeur peut travailler. +50 Pts.`, "SOC_ADMIN");
             document.getElementById('score').style.color = "var(--info)";
         } else {
-            stats.score -= 100; // AIE ! Attaque ignorée !
-            createLog("CRITICAL", `ERREUR FATALE : Vous avez ignoré une attaque réelle (${ip}) ! -100 Pts.`, "SOC_ADMIN");
+            // ==========================================
+            // GAME OVER : IGNORE UNE VRAIE ATTAQUE
+            // ==========================================
+            isCompromised = true;
+            stats.score -= 500;
+
+            // UI Update Game Over
             document.getElementById('score').style.color = "var(--critical)";
+            document.body.classList.add('compromised-flash');
+
+            const badge = document.getElementById('global-status');
+            badge.className = "status-badge compromised";
+            badge.innerText = "🚨 SYSTÈME COMPROMIS 🚨";
+
+            createLog("CRITICAL", `[FATAL ERROR] L'alerte pour ${ip} a été ignorée. L'attaquant a infiltré le réseau !`, "SYSTEM");
+
+            setTimeout(() => {
+                openExplanation('compromised');
+                document.getElementById('modal-title').innerText = "💀 INCIDENT MAJEUR DE SÉCURITÉ";
+                document.querySelector('.modal-header').style.background = "#7f1d1d";
+            }, 1000);
         }
         parentCell.innerHTML = `<span style="color:var(--warning); font-weight:bold;">Action : IGNORÉ</span>`;
     }
-    setTimeout(() => document.getElementById('score').style.color = "var(--info)", 1000);
+    setTimeout(() => { if (!isCompromised) document.getElementById('score').style.color = "var(--info)"; }, 1000);
 }
 
-// --- FONCTIONNALITÉS MODALES (Timeline & Pédagogie) ---
+// --- FONCTIONNALITÉS MODALES ---
 function analyzeIP(ip) {
     const ipLogs = allLogs.filter(l => l.ip === ip);
     let html = `
         <div class="threat-intel">
             <p><strong>Rapport Threat Intelligence pour ${ip}</strong></p>
-            <p>🌍 Géolocalisation : ${Math.random() > 0.5 ? 'Russie (Moscou)' : 'USA (AWS Datacenter)'}</p>
-            <p>🚨 Réputation AbuseIPDB : ${ipLogs[ipLogs.length - 1]?.isFP ? 'Saine (IP Corporate)' : 'Malveillante (Score: 89/100)'}</p>
+            <p>🌍 Géolocalisation : ${Math.random() > 0.5 ? 'Russie (Serveur Host)' : 'USA (AWS Datacenter)'}</p>
+            <p>🚨 Réputation : ${ipLogs[ipLogs.length - 1]?.isFP ? 'Saine (IP Corporate Interne)' : 'Malveillante (Score: 89/100)'}</p>
         </div>
         <h3>🕵️ Timeline de l'incident :</h3>
         <div class="timeline">
     `;
-    ipLogs.forEach(l => {
-        html += `<div class="timeline-item"><strong>[${l.time}]</strong> <span class="badge badge-${l.level.toLowerCase()}">${l.level}</span> : ${l.message}</div>`;
-    });
+    ipLogs.forEach(l => { html += `<div class="timeline-item"><strong>[${l.time}]</strong> <span class="badge badge-${l.level.toLowerCase()}">${l.level}</span> : ${l.message}</div>`; });
     html += `</div>`;
 
     document.getElementById('modal-title').innerText = `Analyse : ${ip}`;
+    document.querySelector('.modal-header').style.background = "#1e293b"; // Reset color
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
 function openExplanation(type) {
     document.getElementById('modal-title').innerText = `🎓 Comprendre l'Alerte`;
+    document.querySelector('.modal-header').style.background = "#1e293b"; // Reset color
     document.getElementById('modal-body').innerHTML = `<p style="line-height:1.6; font-size:1.1rem;">${explanations[type] || explanations['fp']}</p>`;
     document.getElementById('modal-overlay').classList.remove('hidden');
 }
@@ -178,8 +256,10 @@ function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');
 }
 
-// --- GÉNÉRATEUR D'ATTAQUES ---
+// --- GÉNÉRATEUR D'ATTAQUES (Prend en compte la vitesse) ---
 function triggerAttack(type) {
+    if (isCompromised) return; // Stop si game over
+
     const ip = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.1`;
 
     if (type === 'brute') {
@@ -187,46 +267,52 @@ function triggerAttack(type) {
         let count = 0;
         const bInt = setInterval(() => {
             createLog("WARNING", "sshd: Failed password for root", ip, 'brute');
-            if (++count >= 4) { clearInterval(bInt); setTimeout(() => createLog("CRITICAL", "BRUTE FORCE SSH DÉTECTÉ", ip, 'brute', false), 200); }
-        }, 300);
+            if (++count >= 4) { clearInterval(bInt); setTimeout(() => createLog("CRITICAL", "BRUTE FORCE SSH DÉTECTÉ", ip, 'brute', false), 200 / simSpeed); }
+        }, 300 / simSpeed);
     }
     else if (type === 'false_positive') {
-        const fp_ip = "192.168.1.55"; // IP Interne
-        createLog("INFO", "Connexion VPN initiée par 'Directeur_Finance'", fp_ip, 'fp');
+        const fp_ip = "192.168.1.55";
+        createLog("INFO", "Connexion VPN initiée par 'Directeur_Finance'", fp_ip, 'fp', true);
         let count = 0;
         const fpInt = setInterval(() => {
             createLog("WARNING", "Erreur d'authentification (Bad Password)", fp_ip, 'fp', true);
-            if (++count >= 3) { clearInterval(fpInt); setTimeout(() => createLog("CRITICAL", "ALERTE : Multiples échecs de connexion (Compte Directeur)", fp_ip, 'fp', true), 500); }
-        }, 1500); // Plus lent qu'un robot
+            if (++count >= 3) { clearInterval(fpInt); setTimeout(() => createLog("CRITICAL", "ALERTE : Multiples échecs de connexion (Compte Directeur)", fp_ip, 'fp', true), 500 / simSpeed); }
+        }, 1500 / simSpeed);
     }
     else if (type === 'scan') {
         createLog("INFO", "TCP SYN Packet received port 80", ip, 'scan');
-        setTimeout(() => createLog("WARNING", "Connexion suspecte port 22", ip, 'scan'), 250);
-        setTimeout(() => createLog("CRITICAL", "SCAN DE PORTS HORIZONTAL DÉTECTÉ", ip, 'scan', false), 600);
+        setTimeout(() => createLog("WARNING", "Connexion suspecte port 22", ip, 'scan'), 250 / simSpeed);
+        setTimeout(() => createLog("CRITICAL", "SCAN DE PORTS HORIZONTAL DÉTECTÉ", ip, 'scan', false), 600 / simSpeed);
     }
     else if (type === 'sqli') {
         createLog("INFO", "GET /store.php?id=1 HTTP/1.1", ip, 'sqli');
-        setTimeout(() => createLog("WARNING", "GET /store.php?id=1' HTTP/1.1 500 ERROR", ip, 'sqli'), 800);
-        setTimeout(() => createLog("CRITICAL", "INJECTION SQL RÉUSSIE", ip, 'sqli', false), 1600);
+        setTimeout(() => createLog("WARNING", "GET /store.php?id=1' HTTP/1.1 500 ERROR", ip, 'sqli'), 800 / simSpeed);
+        setTimeout(() => createLog("CRITICAL", "INJECTION SQL RÉUSSIE", ip, 'sqli', false), 1600 / simSpeed);
     }
     else if (type === 'ddos') {
         createLog("WARNING", "Détection pic de requêtes", "Multiple IPs", 'ddos');
-        for (let i = 0; i < 15; i++) setTimeout(() => createLog("INFO", "GET / HTTP/1.1", `Botnet_${i}`, 'ddos'), i * 50);
-        setTimeout(() => createLog("CRITICAL", "ATTAQUE DDoS VOLUMÉTRIQUE", "Multiple IPs", 'ddos', false), 800);
+        for (let i = 0; i < 15; i++) setTimeout(() => createLog("INFO", "GET / HTTP/1.1", `Botnet_${i}`, 'ddos'), (i * 50) / simSpeed);
+        setTimeout(() => createLog("CRITICAL", "ATTAQUE DDoS VOLUMÉTRIQUE", "Multiple IPs", 'ddos', false), 800 / simSpeed);
     }
 }
 
 // --- MISSIONS ---
 function startMission(id) {
-    switchView('overview', document.querySelector('#nav-menu li:first-child')); // Retourne sur l'écran principal
+    if (isCompromised) {
+        alert("Vous devez relancer la page, le système est compromis !");
+        return;
+    }
+    switchView('overview', document.querySelector('#nav-menu li:first-child'));
     createLog("INFO", `--- DÉBUT DE LA MISSION ${id} ---`, "SYSTEM");
+    simSpeed = 1; // On remet la vitesse normale pour la mission
+    document.getElementById('sim-speed').value = "1";
 
     if (id === 1) {
-        setTimeout(() => triggerAttack('scan'), 1000); // Vraie attaque
-        setTimeout(() => triggerAttack('false_positive'), 3000); // Le faux positif pour piéger
+        setTimeout(() => triggerAttack('scan'), 1000);
+        setTimeout(() => triggerAttack('false_positive'), 3000);
     }
     else if (id === 2) {
-        setTimeout(() => triggerAttack('ddos'), 1000); // Diversion (le DDoS est dur à bloquer IP par IP)
-        setTimeout(() => triggerAttack('brute'), 2000); // La vraie intrusion silencieuse
+        setTimeout(() => triggerAttack('ddos'), 1000);
+        setTimeout(() => triggerAttack('brute'), 2000);
     }
 }
