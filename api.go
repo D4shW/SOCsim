@@ -2,48 +2,65 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
-// SetupRoutes configure notre API REST
 func SetupRoutes() {
-	// Route pour récupérer les logs
-	http.HandleFunc("/api/logs", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Permet au frontend de nous parler
-		json.NewEncoder(w).Encode(Logs)
-	})
-
-	// Route pour récupérer le score
-	http.HandleFunc("/api/score", func(w http.ResponseWriter, r *http.Request) {
+	// 1. Envoi des données (Logs + Stats) au Dashboard
+	http.HandleFunc("/api/state", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		json.NewEncoder(w).Encode(map[string]int{"score": Score})
+		w.Header().Set("Content-Type", "application/json")
+
+		Mutex.Lock()
+		defer Mutex.Unlock()
+
+		response := map[string]interface{}{
+			"logs":  Logs,
+			"stats": Stats,
+		}
+		json.NewEncoder(w).Encode(response)
 	})
 
-	// Route pour lancer une attaque
+	// 2. Déclenchement d'une attaque
 	http.HandleFunc("/api/attack", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		typeAttaque := r.URL.Query().Get("type")
-		if typeAttaque == "brute" {
-			go SimulateBruteForce() // "go" permet de lancer ça en arrière-plan !
-		} else if typeAttaque == "scan" {
-			go SimulatePortScan()
-		}
+		attackType := r.URL.Query().Get("type")
+
+		go SimulateAttack(attackType) // Lancé en tâche de fond !
 		w.Write([]byte("Attaque lancée"))
 	})
 
-	// Route pour prendre une décision
+	// 3. Gestion des décisions du joueur (Bloquer / Ignorer)
 	http.HandleFunc("/api/action", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		action := r.URL.Query().Get("type")
 		ip := r.URL.Query().Get("ip")
-		resultat := HandleAction(action, ip)
-		w.Write([]byte(resultat))
-	})
+		action := r.URL.Query().Get("action")
+		isFP := r.URL.Query().Get("isFP") == "true"
 
-	// Route pour le rapport
-	http.HandleFunc("/api/report", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Write([]byte(GenerateReport()))
+		Mutex.Lock()
+		if !Stats.Compromised {
+			if action == "block" {
+				if isFP {
+					Stats.Score -= 50
+					go AddLog("CRITICAL", fmt.Sprintf("ERREUR SOC : Plainte RH, vous avez bloqué l'employé %s", ip), "SOC", "general", false)
+				} else {
+					Stats.Score += 50
+					Stats.Blocked++
+					go AddLog("INFO", fmt.Sprintf("Succès SOC : Attaquant %s bloqué par le pare-feu", ip), "SOC", "general", false)
+				}
+			} else if action == "ignore" {
+				if isFP {
+					Stats.Score += 50
+					go AddLog("INFO", fmt.Sprintf("Succès SOC : Faux positif identifié pour %s", ip), "SOC", "general", false)
+				} else {
+					Stats.Score -= 500
+					Stats.Compromised = true
+					go AddLog("CRITICAL", fmt.Sprintf("[FATAL] Alerte ignorée. L'attaquant %s a infiltré le réseau !", ip), "SYSTEM", "general", false)
+				}
+			}
+		}
+		Mutex.Unlock()
+		w.Write([]byte("Action traitée"))
 	})
 }
