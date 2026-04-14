@@ -82,23 +82,23 @@ Voici à quoi servent les fichiers du projet, expliqués simplement :
 
 ### Le Moteur (Backend en Go) :
 
-* ```main.go``` : C'est la clé de contact. Il démarre l'ensemble du programme.
+* ```main.go``` : Le point d'entrée. Initialise les statistiques et lance le serveur sur le port 8080.
 
-* ```simulator.go``` : C'est le "faux méchant". Il génère les fausses attaques pour vous entraîner.
+* ```simulator.go``` : Le générateur d'attaques. Fait tourner des tâches en arrière-plan (Goroutines) pour créer des menaces avec des adresses IP réalistes (LAN et WAN).
 
-* ```api.go``` : C'est le facteur. Il transporte les messages entre le moteur (Go) et la page web (Node.js).
+* ```api.go``` : Le pont de communication (API REST). Fournit les données à la page web et reçoit les ordres de l'analyste (Bloquer/Ignorer).
 
-* ```database.go``` : C'est la mémoire. Il retient tout ce qui s'est passé (les historiques) le temps de la simulation.
+* ```database.go``` : La mémoire centralisée. Stocke les scores, les logs et l'état du système en temps réel (protégée par des Mutex).
 
 ### L'Écran (Frontend en Node.js) : dossier ```/dashboard/```
 
 * ```server.js``` : Un mini-serveur qui sert juste à afficher votre page web.
 
-* ```index.html``` : Le squelette de la page web (les boutons, les textes).
+* ```index.html``` : L'ossature de la page (Barre latérale, Terminal, Onglets, Écran de boot).
 
-* ```style.css``` : La peinture de la page web (les couleurs, la mise en page).
+* ```style.css``` : Le design sombre et professionnel (style SIEM), les animations de piratage.
 
-* ```script.js``` : L'intelligence de la page web. C'est lui qui demande les nouvelles informations au "facteur" (api.go) pour rafraîchir l'écran.
+* ```script.js``` : Le client dynamique. Interroge le serveur Go toutes les secondes, dessine les graphiques (Chart.js) et génère les alertes sonores (Web Audio API).
 
 ## 6. Comment utiliser le simulateur
 
@@ -114,19 +114,23 @@ Voici à quoi servent les fichiers du projet, expliqués simplement :
 
 6. **Générez le rapport** : Cliquez sur "Générer Rapport" pour voir le bilan de l'attaque et comprendre ce qui s'est passé.
 
-## 7. Exemple d'utilisation : Le scénario du "Brute Force"
+## 7. Exemple d'utilisation : Le scénario du "Malware"
 
-**Ce qu'il se passe en coulisses :** Un programme malveillant essaie de se connecter à votre serveur en devinant des mots de passe. Il essaie : "admin123", puis "password", puis "123456"... très rapidement.
+**Ce qu'il se passe en coulisses :** Un employé de l'entreprise télécharge sans faire exprès un Ransomware caché dans une fausse facture. Le virus s'exécute et essaie de contacter son créateur sur Internet.
 
 **Dans votre simulateur :**
 
-1. L'outil ```analyzer.go``` remarque que la machine numéro ```192.168.1.50``` s'est trompée de mot de passe 5 fois de suite.
+1. Vous lancez l'attaque "Malware / EDR".
 
-2. Il crée une alerte rouge "CRITIQUE".
+2. Un log `INFO` apparaît avec un badge bleu [LAN]. L'IP locale `10.0.5.42` vient de télécharger invoice.pdf.exe.
 
-3. Vous, en tant qu'analyste, voyez l'alerte. Vous comprenez que ce n'est pas un humain qui oublie son mot de passe, mais un robot.
+3. Quelques secondes plus tard, un `WARNING` orange retentit : un processus suspect s'est lancé sur cette machine.
 
-4. Vous cliquez sur "Bloquer". Le simulateur coupe l'accès à cette machine. Le système est sauvé !
+4. Soudain, une double alarme stridente retentit ! Une alerte `CRITICAL` apparaît :**ALERTE EDR : EXECUTION RANSOMWARE.**
+
+5. En tant qu'analyste, vous avez quelques secondes pour réagir. Vous cliquez sur "Bloquer".
+
+6. Le simulateur envoie l'ordre au backend Go, qui valide votre action. Vous gagnez 50 points et sauvez le réseau de l'entreprise !
 
 ## 8. Lexique (pour tout comprendre)
 
@@ -155,6 +159,8 @@ La cybersécurité utilise beaucoup de jargon. Voici la traduction en français 
 * **Malware (Logiciel Malveillant) :** Terme global pour désigner tous les virus informatiques (Ransomware, Cheval de Troie).
 Il s'introduit souvent sur le réseau en se déguisant en fichier légitime (comme une fausse facture par email).
 Une fois ouvert, il s'installe en cachette pour voler des données ou bloquer le système contre une rançon.
+
+* **LAN / WAN** : Local Area Network (Le réseau interne, privé) / Wide Area Network (Internet, public).
 
 ## 9. FAQ (Foire Aux Questions)
 
