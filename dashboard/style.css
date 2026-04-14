@@ -815,3 +815,59 @@ header h1 {
     background: var(--bg-base);
     border: 2px solid var(--accent);
 }
+
+/* ==========================================
+   IMMERSION : BOOT SCREEN & TAGS RESEAUX
+========================================== */
+
+/* Écran de Boot */
+#boot-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 50px;
+    transition: opacity 1s ease-out;
+}
+
+.boot-text {
+    font-family: var(--font-mono);
+    color: #0f0;
+    font-size: 1.2rem;
+    line-height: 1.8;
+}
+
+/* Tags Réseaux LAN / WAN / SYS */
+.net-tag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-right: 8px;
+    letter-spacing: 1px;
+}
+
+.tag-lan {
+    background: rgba(88, 166, 255, 0.2);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+}
+
+.tag-wan {
+    background: rgba(210, 153, 34, 0.2);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
+.tag-sys {
+    background: rgba(139, 148, 158, 0.2);
+    color: var(--text-muted);
+    border: 1px solid var(--text-muted);
+}

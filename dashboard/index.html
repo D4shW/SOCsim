@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOC_sim | Advanced Threat Analytics</title>
+    <title>SOC_sim | Advanced Threat Analytics </title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;700&display=swap"
         rel="stylesheet">
@@ -12,6 +12,13 @@
 </head>
 
 <body>
+    <div id="boot-screen">
+        <div class="boot-text" id="boot-text">
+            > INITIALIZING SOC KERNEL...<br>
+            > ESTABLISHING SECURE CONNECTION TO SENSORS...<br>
+        </div>
+    </div>
+
     <div class="siem-layout">
         <aside class="sidebar">
             <div class="logo"><span class="shield">🛡️</span> SOC_sim</div>
@@ -80,17 +87,14 @@
                             <input type="text" id="search-logs" placeholder="🔍 Rechercher (IP, mot...)"
                                 onkeyup="filterLogs()">
                             <select id="filter-level" onchange="filterLogs()">
-                                <option value="ALL">Tous les niveaux</option>
-                                <option value="INFO">INFO uniquement</option>
-                                <option value="WARNING">WARNING uniquement</option>
-                                <option value="CRITICAL">CRITICAL uniquement</option>
+                                <option value="ALL">Tous niveaux</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="CRITICAL">CRITICAL</option>
                             </select>
                             <button id="btn-pause" class="tool-btn" onclick="togglePause()">⏸️ Pause</button>
-                            <select id="sim-speed" onchange="changeSpeed()">
-                                <option value="1">Vitesse x1</option>
-                                <option value="2">Vitesse x2</option>
-                                <option value="5">Vitesse x5</option>
-                            </select>
+                            <button id="btn-audio" class="tool-btn" onclick="toggleAudio()"
+                                style="background: #334155;">🔇 Audio OFF</button>
                         </div>
                         <div class="terminal" id="terminal">
                             <div class="log log-info">System initialized. Awaiting events...</div>
@@ -107,6 +111,7 @@
                             <tr>
                                 <th>Heure</th>
                                 <th>Niveau</th>
+                                <th>Réseau</th>
                                 <th>IP Source</th>
                                 <th>Description</th>
                                 <th>Pédagogie</th>
@@ -117,7 +122,6 @@
                     </table>
                 </div>
             </div>
-
             <div id="view-history" class="view">
                 <div class="panel">
                     <h2>Base de données d'événements</h2>
@@ -127,6 +131,7 @@
                                 <th>ID</th>
                                 <th>Heure</th>
                                 <th>Niveau</th>
+                                <th>Réseau</th>
                                 <th>IP Source</th>
                                 <th>Message</th>
                             </tr>
@@ -135,36 +140,30 @@
                     </table>
                 </div>
             </div>
-
             <div id="view-missions" class="view">
                 <div class="panel">
                     <h2>🎮 Centre d'entraînement SOC</h2>
-                    <p>Testez vos réflexes. Attention aux faux positifs !</p>
                     <div class="mission-cards">
                         <div class="mission-card">
-                            <h3>Mission 1 : Le Bruit de Fond</h3>
-                            <p>Vous subissez un Scan de Port, mais en même temps, le PDG essaie de se connecter. Bloquez
-                                la menace, ignorez le PDG.</p>
-                            <button class="btn btn-attack" onclick="startMission(1)">▶️ Démarrer Mission 1</button>
+                            <h3>Mission 1 : Bruit de Fond</h3>
+                            <p>Scan externe (WAN) vs Connexion interne (LAN).</p><button class="btn btn-attack"
+                                onclick="startMission(1)">▶️ Démarrer</button>
                         </div>
                         <div class="mission-card">
-                            <h3>Mission 2 : Attaque Combinée (APT)</h3>
-                            <p>Un attaquant lance un DDoS pour faire diversion pendant qu'il effectue un Brute Force.
-                            </p>
-                            <button class="btn btn-attack" onclick="startMission(2)">▶️ Démarrer Mission 2</button>
+                            <h3>Mission 2 : APT</h3>
+                            <p>DDoS de diversion + Brute Force.</p><button class="btn btn-attack"
+                                onclick="startMission(2)">▶️ Démarrer</button>
                         </div>
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
 
     <div id="modal-overlay" class="hidden">
         <div class="modal-box">
             <header class="modal-header">
-                <h2 id="modal-title">Titre</h2>
-                <button class="close-btn" onclick="closeModal()">✖</button>
+                <h2 id="modal-title">Titre</h2><button class="close-btn" onclick="closeModal()">✖</button>
             </header>
             <div id="modal-body" class="modal-body"></div>
         </div>
